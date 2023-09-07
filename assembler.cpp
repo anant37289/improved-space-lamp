@@ -163,7 +163,7 @@ string encode(string instruction,int instruction_count){
 
 void assemble(string inpath,string opath){
 make_symbol_table(inpath);
-string fileContents;
+//string fileContents;
 ifstream inputFile(inpath);
 ofstream outputFile(opath);
 string instruction;
@@ -176,5 +176,5 @@ int instruction_count=0;
     }
 }
 int main() {
-   assemble("example.txt","output.txt");
+   assemble("example.txt","machinecode.txt");
 }
