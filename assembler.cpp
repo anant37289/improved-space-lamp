@@ -176,5 +176,6 @@ int instruction_count=0;
     }
 }
 int main() {
-   assemble("example.txt","machinecode.txt");
+   //assemble("example.txt","machinecode.txt");
+   cout<<encode("or t1,x0,s1",0);
 }
