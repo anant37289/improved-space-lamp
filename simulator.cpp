@@ -105,13 +105,22 @@ int GPR[32];
 for(int i=0;i<32;i++){GPR[i]=0;}
 GPR[9]=2;
 string instruction;
-ifstream imem("machinecode.txt");
+ifstream inputfile("machinecode.txt");
+int PC_proxy=0;
+map<int,string> IM;
+while(getline(inputfile,instruction)){
+IM[PC_proxy]=instruction;
+PC_proxy=PC_proxy+4;
+}
+cout<<PC_proxy<<endl;//finally holds the line next to last
 int PC=0;
-//instruction=IM[PC]
+//
 // while(getline(imem,instruction)){
+    while(PC!=PC_proxy){
+    instruction=IM[PC];
     PC=PC+4;
     //using different instruction indexing
-    instruction="00000000100100000110001100110011";
+    
     int rsl1=stir(instruction.substr(12,5));
     int rsl2=stir(instruction.substr(7,5));
     int rd=stir(instruction.substr(20,5));
@@ -136,5 +145,6 @@ int PC=0;
     cout<<rd<<endl;
     cout<<GPR[6]<<endl;
     //}
+    }
 }
 
