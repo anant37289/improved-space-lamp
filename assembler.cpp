@@ -88,29 +88,30 @@ void make_symbol_table(string inpath){
 ifstream inputFile(inpath);
 string instruction;
 int count=0;
-list <string> labels_need_to_add;
-cout<<"yes"<<endl;
+//list <string> labels_need_to_add;
+//cout<<"yes"<<endl;
   while (getline(inputFile, instruction)) {
-    cout<<"yes"<<endl;
+    //cout<<"yes"<<endl;
     cout<<count<<endl;
         if(is_label(instruction)){
-            
             instruction.pop_back();
-            labels_need_to_add.push_back(instruction);
-            while(getline(inputFile, instruction)){
-                if(is_label(instruction)){
-                   labels_need_to_add.push_back(instruction); 
-                }
-                else{
-                    count++;
-                    while(!labels_need_to_add.empty()){
-                        string label=labels_need_to_add.front();
-                        labels_need_to_add.pop_front();
-                        symtab1.symbol_map[label]=count;
-                    }
-                    break;
-                }
-            }
+            symtab1.symbol_map[instruction]=count+1;
+            // instruction.pop_back();
+            // labels_need_to_add.push_back(instruction);
+            // while(getline(inputFile, instruction)){
+            //     if(is_label(instruction)){
+            //        labels_need_to_add.push_back(instruction); 
+            //     }
+            //     else{
+            //         count++;
+            //         while(!labels_need_to_add.empty()){
+            //             string label=labels_need_to_add.front();
+            //             labels_need_to_add.pop_front();
+            //             symtab1.symbol_map[label]=count;
+            //         }
+            //         break;
+            //     }
+            // }
         }else{
             count++;
         }
@@ -124,7 +125,7 @@ string encoding(string desc,vector<string> instr_seg,int instruction_count){
     string token;
     while (getline(ss, token, ',')) {
         desc_tokens.push_back(token);
-    }
+    } 
     if(desc[0]=='R'){
         return encoder1.rencoding(desc_tokens,instr_seg);
     }
@@ -176,6 +177,6 @@ int instruction_count=0;
     }
 }
 int main() {
-   //assemble("example.txt","machinecode.txt");
-   cout<<encode("or t1,x0,s1",0);
+   assemble("example.txt","machinecode.txt");
+   //cout<<encode("or t1,x0,s1",0);
 }

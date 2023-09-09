@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <map>
 using namespace std;
@@ -55,10 +56,11 @@ class controlword{
         bool op0=stoi(opcode.substr(0,1));
         bool op1=stoi(opcode.substr(1,1));
         bool op2=stoi(opcode.substr(2,1));//opcode_6,5,4 respectively
-        cw_map["ALUsrc"]=!op1||!op0&&op1&&!op2;
-        cw_map["memreg"]=op0;
+        cw_map["ALUsrc"]=!op1||!op0&&op1&&!op2;//ok
+        cw_map["memreg"]=!op0&&!op1&&!op2;
         cw_map["regwrite"]=!op1||op2;
         cw_map["memwrite"]=!op0&&op1&&!op2;
+        cw_map["memread"]=!op0&&!op1&&!op2;
         cw_map["branch"]=op0&&op1;
         // cw_map["aluop1"]=op2;
         // cw_map["aluop2"]=op0&&op1;
@@ -86,6 +88,22 @@ string ALU_control(string func3,string func7,string opcode){
     
 }
 
+class DM{
+    public:
+    map<int,int> DataMem;
+    DM(){
+        ifstream dat_file("DM.csv");
+        string dat_line;
+        while(getline(dat_file,dat_line)){
+            int comma=dat_line.find(',');
+            DataMem[stoi(dat_line.substr(0,comma))]=stoi(dat_line.substr(comma+1));
+        }
+    }
+        void write(int address,int data){
+        ofstream dat_file1("DM.csv",ios::app);
+        dat_file1<<to_string(address)+","+to_string(data)<<endl;
+    }
+}dm;
 
 class ALU{
     public:
@@ -103,7 +121,6 @@ class ALU{
 int main(){
 int GPR[32];
 for(int i=0;i<32;i++){GPR[i]=0;}
-GPR[9]=2;
 string instruction;
 ifstream inputfile("machinecode.txt");
 int PC_proxy=0;
@@ -114,13 +131,20 @@ PC_proxy=PC_proxy+4;
 }
 cout<<PC_proxy<<endl;//finally holds the line next to last
 int PC=0;
+int NPC;
 //
 // while(getline(imem,instruction)){
     while(PC!=PC_proxy){
     instruction=IM[PC];
-    PC=PC+4;
+    NPC=PC+4;
     //using different instruction indexing
-    
+
+    string immil=instruction.substr(0,12);//imm for load store
+    string imms=instruction.substr(0,7)+instruction.substr(20,5);
+    string immb=instruction.substr(0,1)+instruction.substr(24,1)+instruction.substr(1,6)+instruction.substr(20,4);
+    //debugging purpose
+    cout<<instruction<<endl;
+    cout<<instruction.substr(0,1)<<" "<<instruction.substr(24,1)<<" "<<instruction.substr(1,6)<<" "<<instruction.substr(20,4)<<endl;
     int rsl1=stir(instruction.substr(12,5));
     int rsl2=stir(instruction.substr(7,5));
     int rd=stir(instruction.substr(20,5));
@@ -132,6 +156,17 @@ int PC=0;
     int rs1,rs2;
     if(cw.cw_map["regread"]){rs1=GPR[rsl1];}
     if(cw.cw_map["regread"]){rs2=GPR[rsl2];}
+    int immi;
+    if(cw.cw_map["memwrite"]){
+        immi=stii(imms);
+    }
+    else if(cw.cw_map["branch"]){
+        immi=stii(immb);
+    }
+    else{
+        immi=stii(immil);
+    }
+  
     string func3=instruction.substr(17,3);
     string func7=instruction.substr(0,7);
     //cout<<PC<<" "<<opcode<<" "<<func3<<" "<<func7<<endl;
@@ -139,12 +174,58 @@ int PC=0;
     //Execute
     cout<<aluselect<<endl;
     int input_data1=rs1;
-    int input_data2=rs2;
+    int input_data2;
+    if(cw.cw_map["ALUsrc"]){
+        input_data2=immi;
+    }else{
+    input_data2=rs2;
+    }
+     
     int ALU_result=alu.compute(input_data1,input_data2,aluselect);
-    if(cw.cw_map["regread"]){GPR[rd]=ALU_result;}
+    bool zero_flag=(rs1==rs2);
+    bool lt_flag=(rs1<rs2);
+    bool gt_flag=(rs1>rs2);
+    int ldresult;
+    if(cw.cw_map["memread"]){
+        ldresult=dm.DataMem[ALU_result];
+    }
+    if(cw.cw_map["memwrite"]){
+        dm.write(ALU_result,rs2);
+    }
+    int BPC=PC+immi*4;
+    int TPC;
+    if(cw.cw_map["branch"]){
+        switch (stir(func3)){
+            case 0://beq
+            if(zero_flag){TPC=BPC;}
+            else{TPC=NPC;}
+            break;
+            case 5:
+            if(zero_flag||gt_flag){TPC=BPC;}
+            else{TPC=NPC;}
+            break;
+            case 7:
+            if(lt_flag){TPC=BPC;}
+            else{TPC=NPC;}
+            break;
+        }
+    }else{
+        TPC=NPC;
+    }
+    PC=TPC;
+    if(cw.cw_map["regwrite"]){
+        if(cw.cw_map["memreg"]){
+            GPR[rd]=ldresult;
+        }else{
+             GPR[rd]=ALU_result;
+        }
+    }
     cout<<rd<<endl;
-    cout<<GPR[6]<<endl;
+    cout<<"s2 "<<GPR[18]<<endl;
     //}
     }
 }
-
+// int main(){
+//     cout<<dm.DataMem[2]<<endl;
+//     dm.write(3,4068);
+// }

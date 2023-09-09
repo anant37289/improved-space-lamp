@@ -1,4 +1,4 @@
-addi s1,x0,2
+addi s1,x0,5
 addi t0,x0,2
 loop:
 bge t0,s1,prime

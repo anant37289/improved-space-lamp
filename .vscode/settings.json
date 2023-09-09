@@ -6,6 +6,7 @@
         "bitset": "cpp",
         "iostream": "cpp",
         "*.tcc": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "map": "cpp"
     }
 }
