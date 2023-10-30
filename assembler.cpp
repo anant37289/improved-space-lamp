@@ -71,7 +71,7 @@ string bencoding(vector<string> desc_tokens,vector<string> instr_seg,int instruc
     string label=instr_seg[3];
     int label_def=symtab1.symbol_map[label];
     int immi=(label_def-instruction_number);
-    string imm=bitset<12>(immi).to_string();
+    string imm=bitset<12>(immi).to_string();//shift by 2 in further code
     cout<<immi<<" "<<imm<<endl;
     return imm[0]+imm.substr(2,6)+rmap.get_binary(instr_seg[2])+rmap.get_binary(instr_seg[1])+desc_tokens[2]+imm.substr(8)+imm[1]+desc_tokens[1];
 }   
@@ -92,26 +92,10 @@ int count=0;
 //cout<<"yes"<<endl;
   while (getline(inputFile, instruction)) {
     //cout<<"yes"<<endl;
-    cout<<count<<endl;
+    //cout<<count<<endl;
         if(is_label(instruction)){
             instruction.pop_back();
             symtab1.symbol_map[instruction]=count+1;
-            // instruction.pop_back();
-            // labels_need_to_add.push_back(instruction);
-            // while(getline(inputFile, instruction)){
-            //     if(is_label(instruction)){
-            //        labels_need_to_add.push_back(instruction); 
-            //     }
-            //     else{
-            //         count++;
-            //         while(!labels_need_to_add.empty()){
-            //             string label=labels_need_to_add.front();
-            //             labels_need_to_add.pop_front();
-            //             symtab1.symbol_map[label]=count;
-            //         }
-            //         break;
-            //     }
-            // }
         }else{
             count++;
         }
@@ -178,5 +162,5 @@ int instruction_count=0;
 }
 int main() {
    assemble("example.txt","machinecode.txt");
-   //cout<<encode("or t1,x0,s1",0);
+   //cout<<encode("sw x2,2,x0",0);
 }
