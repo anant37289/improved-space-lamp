@@ -1,3 +1,6 @@
-lw x1,x2,3
+beq x0,x0,label
 add x2,x1,x0
+add x1,x2,x3
+label:
+add x2,x1,x3
 exit:

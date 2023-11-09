@@ -72,7 +72,7 @@ string bencoding(vector<string> desc_tokens,vector<string> instr_seg,int instruc
     int label_def=symtab1.symbol_map[label];
     int immi=(label_def-instruction_number);
     string imm=bitset<12>(immi).to_string();//shift by 2 in further code
-    cout<<immi<<" "<<imm<<endl;
+   // cout<<immi<<" "<<imm<<endl;
     return imm[0]+imm.substr(2,6)+rmap.get_binary(instr_seg[2])+rmap.get_binary(instr_seg[1])+desc_tokens[2]+imm.substr(8)+imm[1]+desc_tokens[1];
 }   
 //jump and u type maybe later
