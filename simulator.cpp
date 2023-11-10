@@ -213,7 +213,7 @@ void Forwarder::resolve(){
         }
     if(exmo.rdl==idex.rsl2 && exmo.rdl!=0&& exmo.cw.cw_map["regwrite"] &&!exmo.cw.cw_map["memread"] && !idex.cw.cw_map["ALUsrc"]) {
     //rest same forward just for branch and R-R operation
-        idex.rs2=exmo.rs2;
+        idex.rs2=exmo.ALU_out;
         rs2_forwarded_by_exmo=true;
     }
     }
@@ -251,7 +251,8 @@ if (!PC.valid || ifid.stall){return;}
 }
 void add_bubble_in_execute(){
     //for bubble:
-    string nop="00000000000100000000000000010011";
+    string nop="00000000000000000000000000010011";
+    
     string opcode=nop.substr(25,7);
     string func3=nop.substr(17,3);
     string func7=nop.substr(0,7);
@@ -263,10 +264,11 @@ void add_bubble_in_execute(){
     idex.instruction=nop;
     idex.rdl=0;
     idex.DPC=-1;
+    idex.valid=true;
 }
 void add_bubble_in_decode(){
     //for bubble:
-    string nop="00000000000100000000000000010011";
+    string nop="00000000000000000000000000010011";
     ifid.DPC=-1;
     ifid.stall=false;
     ifid.IR=nop;
@@ -471,7 +473,7 @@ void wb(){
         }else{
              write_res=ALU_result;
         }
-        if(ins[rd]==PC_writeback){
+        if(ins[rd]==PC_writeback && rd!=0){
             GPR[rd]=write_res;
             ins[rd]=-1;//unlock
         }
@@ -494,7 +496,7 @@ IM[PC]=s;
 }
 
 int main(){
-    s=s+"1";
+s=s+"1";
 make_IM_GPR_INS();
 //load the pipeline
 PC.valid=true;
@@ -502,12 +504,24 @@ PC.pc=0;
 int CC=0;
 //int CC_after_branch_fetch=0;
 while(PC.valid||ifid.valid||idex.valid||exmo.valid||mowb.valid){
+    /*
+    code to print timing diagram at the beginning of every cycle
+    */
+    int PC_val[5]={0};
+    if(PC.valid){PC_val[0]=PC.pc;}else{PC_val[0]=-2;}
+    if(ifid.valid){PC_val[1]=ifid.DPC;}else{PC_val[1]=-2;}
+    if(idex.valid){PC_val[2]=idex.DPC;}else{PC_val[2]=-2;}
+    if(exmo.valid){PC_val[3]=exmo.DPC;}else{PC_val[3]=-2;}
+    if(mowb.valid){PC_val[4]=mowb.DPC;}else{PC_val[4]=-2;}
     CC+=1;
     if (CC == 1) {
     cout << left << setw(6) << "cycle"<<setw(8) << "fetch"<<setw(8) << "decode"<<setw(8) << "execute"<<setw(8) << "memory"<< "writeback" << endl;
     }
-    cout<<left<<setw(8)<<CC<<setw(8)<<PC.pc<<setw(8)<<ifid.DPC<<setw(8)<<idex.DPC<<setw(8)<<exmo.DPC<<mowb.DPC<<endl;
-    //operant forwarding should also happen here
+    cout<<left<<setw(8)<<CC<<setw(8)<<PC_val[0]<<setw(8)<<PC_val[1]<<setw(8)<<PC_val[2]<<setw(8)<<PC_val[3]<<PC_val[4]<<endl;
+    /*
+    END
+    */
+
     NPC=PC.pc+4;
     forwarder.resolve();
     wb();
@@ -521,15 +535,28 @@ while(PC.valid||ifid.valid||idex.valid||exmo.valid||mowb.valid){
         }
         else{
             PC.pc=TPC;
+            /*
+            if a branch is setting this and the branch is taken you should fetch the next instruction 
+            because it is going to be some valid instruction else make the PC.valid remain false if it is
+            the terminating set of instructions
+            */
+           if(exmo.cw.cw_map["branch"] && exmo.is_branch_taken){
+            PC.valid=true;
+           }
+            
         }
     }
     //if branch taken --> flush 
     if(exmo.cw.cw_map["branch"] && exmo.is_branch_taken){
         //ifid.flush and idex.flush
-        ins[idex.rdl]=Prev_val_of_ins_rdl;
+        if(idex.rdl!=0){
+            ins[idex.rdl]=Prev_val_of_ins_rdl;
+        }
+        
         add_bubble_in_decode();
         add_bubble_in_execute();
     }
 }
+cout<<"prime:"<<GPR[18]<<endl;
 }
 
