@@ -1,0 +1,13 @@
+addi s1,x0,1
+addi s2,x0,7
+addi x3,x0,2
+fact_loop:
+add x2,x3,x0
+loop:
+add t0,t0,s1
+addi x2,x2,-1
+blt x0,x2,loop
+addi x3,x3,1
+add s1,t0,x0
+add t0,x0,x0
+bge s2,x3,fact_loop

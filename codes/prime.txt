@@ -1,9 +1,5 @@
-addi s3,x0,7
-addi s4,x0,2
-sw s3,28,x0
-sw s4,20,x0
-lw s1,x0,28
-lw t0,x0,20
+addi s1,x0,7
+addi t0,x0,2
 loop:
 bge t0,s1,prime
 add t1,s1,x0
