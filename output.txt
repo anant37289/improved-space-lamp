@@ -1,0 +1,8 @@
+### 28 write Miss ###
+1000156
+20 write Hit
+15
+28 read Hit
+13
+20 read Hit
+11

@@ -644,7 +644,8 @@ void memory(){
     int rd=exmo.rdl;
     int rs2=exmo.rs2;
     int ldresult;
-   if(cw.cw_map["memread"]){
+    if(instruction!=s){
+    if(cw.cw_map["memread"]){
         auto start = chrono::high_resolution_clock::now();   
         cpureq reqLoad;
         reqLoad.addr=ALU_result;
@@ -666,6 +667,8 @@ void memory(){
         auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
         globalOutputStream<< duration.count() << endl;
     }
+    }
+
 mowb.DPC=exmo.DPC;
 mowb.instruction=instruction;
 mowb.alu_out=exmo.ALU_out;
@@ -715,6 +718,7 @@ IM[PC]=s;
 }
 
 int main(){
+globalOutputStream.open("output.txt");
 s=s+"1";
 make_IM_GPR_INS();
 //load the pipeline
@@ -723,7 +727,7 @@ PC.pc=0;
 int CC=0;
 //int CC_after_branch_fetch=0;
 while(PC.valid||ifid.valid||idex.valid||exmo.valid||mowb.valid){
-    globalOutputStream.open("output.txt");
+    
     /*
     code to print timing diagram at the beginning of every cycle
     */
@@ -741,7 +745,9 @@ while(PC.valid||ifid.valid||idex.valid||exmo.valid||mowb.valid){
     /*
     END
     */
-
+if(CC==95){
+    cout<<"stop"<<endl;
+}
     NPC=PC.pc+4;
     forwarder.resolve();
     wb();
