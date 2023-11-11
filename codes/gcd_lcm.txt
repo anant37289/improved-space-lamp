@@ -1,0 +1,33 @@
+#code for gcd lcm
+addi x1,x0,8
+addi x2,x0,2
+blt x1,x2,x1_lt_x2
+add s1,x1,x0
+add s2,x2,x0
+beq x0,x0,compare_exit
+x1_lt_x2:
+add s1,x2,x0
+add s2,x1,x0
+compare_exit:
+add t0,s1,x0
+add t1,s2,x0
+gcd_loop:
+sub t0,t0,t1
+blt t1,t0,gcd_loop
+beq t0,x0,gcd_exit
+add t2,t1,x0
+add t1,t0,x0
+add t0,t2,x0
+beq x0,x0,gcd_loop
+gcd_exit:
+add t2,x0,x0
+loop:
+add t2,t2,x1
+addi x2,x2,-1
+blt x0,x2,loop
+addi t3,x0,1
+loop2:
+sub t2,t2,t1
+addi t3,t3,1
+blt t1,t2,loop2
+add x0,x0,x0
