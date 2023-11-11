@@ -163,5 +163,4 @@ int instruction_count=0;
 int main() {
    assemble("example.txt","machinecode.txt");
    cout<<"successfully assembeled"<<endl;
-    // cout<<encode("sw x2,2,x0",0);
 }

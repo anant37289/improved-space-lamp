@@ -1,5 +1,6 @@
 #include <bits/stdc++.h>
 using namespace std;
+ofstream globalOutputStream;
 enum type{read,write};
 class block{
     public:
@@ -16,7 +17,7 @@ class req{
         return addr>>6 & 0x3F;//0x3F==0b11 1111
     }
     int offset(){
-        return addr & 0x3F;
+        return addr>>2 & 0xF;//i have made the memory word addressible so the addr should be right shifted by 2
     }
 };
 class cpureq:public req{
@@ -41,7 +42,7 @@ class resp{
         return addr>>6 & 0x3F;
     }
     int offset(){
-        return addr & 0x3F;
+        return addr>>2& 0xF;
     }
 };
 class cpuresp:public resp{
@@ -68,7 +69,7 @@ class MM{
             MEMresp.t=read;//against a read or a write
             return MEMresp;
         }
-        if(MEMreq.t=write){
+        if(MEMreq.t==write){
             mm[MEMreq.tag()]=MEMreq.data;
         } 
     }
@@ -145,15 +146,18 @@ class CACHE{
         for(int i=0;i<way;i++){
             info_block b=s.blocks[i];
             if(b.tag==CPUreq.tag() && (b.s==V||b.s==M)){
-                if(CPUreq.t=read){
+                if(CPUreq.t==read){
+                    globalOutputStream<<CPUreq.addr<<" "<<"read"<<" "<<"Hit"<<endl;
                     CPUresp.data=b.blck.block_elements[CPUreq.offset()];
                     b.time_use=seconds;//for LRU replacement
                     return CPUresp;
                 }
-                if(CPUreq.t=write){
+                if(CPUreq.t==write){
+                    globalOutputStream<<CPUreq.addr<<" "<<"write"<<" "<<"Hit"<<endl;
                     b.s=M;
                     b.blck.block_elements[CPUreq.offset()]=CPUreq.data;
                     b.time_use=seconds;//for LRU replacement
+                    cache[CPUreq.index()].blocks[i]=b;
                     return CPUresp;
                 }
             }
@@ -161,8 +165,16 @@ class CACHE{
                 //pass
             }
         }
+        if(CPUreq.t==read){
+            globalOutputStream<<"### "<<CPUreq.addr<<" "<<"read"<<" "<<"Miss ###"<<endl;
+        }
+        if(CPUreq.t==write){
+            globalOutputStream<<"### "<<CPUreq.addr<<" "<<"write"<<" "<<"Miss ###"<<endl;
+        }   
+
         int eviction_index=evict(s);
-        if(s.blocks[eviction_index].s=M){
+        if(s.blocks[eviction_index].s==M){
+            globalOutputStream<<"for req "<<CPUreq.addr<<" "<<"block_evicted addr: "<<(s.blocks[eviction_index].tag<<6+CPUreq.index())<<endl;
             /*
             add the evicted block to writeback buffer
             addr=s.block[eviction_index]<<6(tag left shifted)+index
@@ -182,6 +194,7 @@ class CACHE{
             s.blocks[eviction_index].s=V;
             s.blocks[eviction_index].blck=MDR.data;
             s.blocks[eviction_index].time_use=seconds;//for LRU replacement
+            cache[cpu_request_being_services.index()]=s;
             CPUresp.t=cpu_request_being_services.t;
             CPUreq.data=MDR.data.block_elements[cpu_request_being_services.offset()];
             return CPUresp;
@@ -191,6 +204,7 @@ class CACHE{
             s.blocks[eviction_index].blck=MDR.data;
             s.blocks[eviction_index].time_use=seconds;//for LRU replacement
             s.blocks[eviction_index].blck.block_elements[CPUreq.offset()]=CPUreq.data;
+            cache[cpu_request_being_services.index()]=s;
         }
         
     }
@@ -206,10 +220,31 @@ index=addr>>6&0x3F
 */
 
 int main(){
-    
-    cpureq req1;
-    req1.data=1;
-    req1.addr=0;
-    req1.t=write;
-    cpuresp resp1=cache.service(req1);
+    globalOutputStream.open("output.txt");
+    for(int i=0;i<16*4;i++){//populate firsT 5 sets by read request
+        auto start = chrono::high_resolution_clock::now();   
+        cpureq req1;
+        req1.data=i;
+        req1.addr=i*4;
+        req1.t=write;
+        cpuresp resp1=cache.service(req1);
+        auto stop = chrono::high_resolution_clock::now();
+        auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+        globalOutputStream<< duration.count() << endl;
+    }
+    for(int i=1;i<5;i++){
+        auto start = chrono::high_resolution_clock::now();   
+        cpureq req1;
+        req1.data=i*64*64;
+        req1.addr=i*64*64;//issue 4 read request to index 1
+        req1.t=write;
+        cpuresp resp1=cache.service(req1);
+        auto stop = chrono::high_resolution_clock::now();
+        auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+        globalOutputStream<< duration.count() << endl;
+    }
+block block1=mem.mm[0];
+for(auto i:block1.block_elements){
+    cout<<block1.block_elements[i]<<endl;
+}
 }
