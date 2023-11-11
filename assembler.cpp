@@ -13,7 +13,7 @@ class instr_map{
 map<string,string> instr;
 public:
 instr_map()
-{string inpath="instruction.csv";
+{string inpath="encodings/instruction.csv";
 ifstream inputFile(inpath);
 string instruction;
 while (getline(inputFile, instruction)) {
@@ -30,7 +30,7 @@ class reg_map{
    map<string,string> register_mapping;
    public:
    reg_map(){
-    string inpath="register.csv";
+    string inpath="encodings/register.csv";
     ifstream inputFile(inpath);
     string regdef;
     while (getline(inputFile, regdef)) {
@@ -161,6 +161,6 @@ int instruction_count=0;
     }
 }
 int main() {
-   assemble("example.txt","machinecode.txt");
+   assemble("editor.txt","machinecode.txt");
    cout<<"successfully assembeled"<<endl;
 }

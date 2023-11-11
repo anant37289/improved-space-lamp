@@ -745,9 +745,6 @@ while(PC.valid||ifid.valid||idex.valid||exmo.valid||mowb.valid){
     /*
     END
     */
-if(CC==95){
-    cout<<"stop"<<endl;
-}
     NPC=PC.pc+4;
     forwarder.resolve();
     wb();
@@ -783,6 +780,6 @@ if(CC==95){
         add_bubble_in_execute();
     }
 }
-cout<<"prime:"<<GPR[18]<<endl;
+cout<<"factorial:"<<GPR[9]<<endl;
 }
 
