@@ -1,4 +1,4 @@
-# risc v simulater with intgrated cache
+# risc v simulator with intgrated cache
 steps to run code:
 - add the code t0 run in editor.txt 
 - run assemble.cpp
