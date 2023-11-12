@@ -1,5 +1,7 @@
 addi s1,x0,1
-addi s2,x0,7
+addi s2,x0,11
+sw s2,4,x0
+lw s2,x0,4
 addi x3,x0,2
 fact_loop:
 add x2,x3,x0

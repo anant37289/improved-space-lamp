@@ -290,23 +290,7 @@ public:
 bool cant_resolve(int rs);
 void resolve();
 }forwarder;
-class DM{
-    public:
-    map<int,int> DataMem;
-    DM(){
-        ifstream dat_file("DM.csv");
-        string dat_line;
-        while(getline(dat_file,dat_line)){
-            int comma=dat_line.find(',');
-            DataMem[stoi(dat_line.substr(0,comma))]=stoi(dat_line.substr(comma+1));
-        }
-    }
-        void write(int address,int data){
-        ofstream dat_file1("DM.csv",ios::app);
-        dat_file1<<to_string(address)+","+to_string(data)<<endl;
-    }
-}dm;
-//DM
+
 map<int,string> IM;
 //IM
 int GPR[32];
@@ -718,7 +702,7 @@ IM[PC]=s;
 }
 
 int main(){
-globalOutputStream.open("output.txt");
+globalOutputStream.open("cache_output.txt");
 s=s+"1";
 make_IM_GPR_INS();
 //load the pipeline
@@ -780,6 +764,8 @@ while(PC.valid||ifid.valid||idex.valid||exmo.valid||mowb.valid){
         add_bubble_in_execute();
     }
 }
-cout<<"factorial:"<<GPR[9]<<endl;
+for(int i=0;i<=31;i++){
+    cout<<"GPR["<<i<<"]: "<<GPR[i]<<endl;
+}
 }
 

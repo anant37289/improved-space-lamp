@@ -1,0 +1,4 @@
+### 4 write Miss ###
+1000513
+4 read Hit
+17

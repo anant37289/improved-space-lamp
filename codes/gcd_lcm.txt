@@ -1,4 +1,3 @@
-#code for gcd lcm
 addi x1,x0,8
 addi x2,x0,2
 blt x1,x2,x1_lt_x2
@@ -30,4 +29,3 @@ loop2:
 sub t2,t2,t1
 addi t3,t3,1
 blt t1,t2,loop2
-add x0,x0,x0

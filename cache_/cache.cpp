@@ -220,7 +220,7 @@ index=addr>>6&0x3F
 */
 
 int main(){
-    globalOutputStream.open("output.txt");
+    globalOutputStream.open("cache_output.txt");
     for(int i=0;i<16*4;i++){//populate firsT 5 sets by read request
         auto start = chrono::high_resolution_clock::now();   
         cpureq req1;
@@ -236,7 +236,7 @@ int main(){
         auto start = chrono::high_resolution_clock::now();   
         cpureq req1;
         req1.data=i*64*64;
-        req1.addr=i*64*64;//issue 4 read request to index 1
+        req1.addr=i*64*64;//issue 4 write request to index 1
         req1.t=write;
         cpuresp resp1=cache.service(req1);
         auto stop = chrono::high_resolution_clock::now();
