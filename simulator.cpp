@@ -500,7 +500,7 @@ void decode(){
         if(ins[rsl2]==-1){
             rs2=GPR[rsl2];  
         }
-    else if(forwarder.cant_resolve(rsl1)){
+    else if(forwarder.cant_resolve(rsl2)){
             ifid.stall=true;
             add_bubble_in_execute();
             return;
@@ -709,7 +709,6 @@ make_IM_GPR_INS();
 PC.valid=true;
 PC.pc=0;
 int CC=0;
-//int CC_after_branch_fetch=0;
 while(PC.valid||ifid.valid||idex.valid||exmo.valid||mowb.valid){
     
     /*
@@ -762,6 +761,7 @@ while(PC.valid||ifid.valid||idex.valid||exmo.valid||mowb.valid){
         
         add_bubble_in_decode();
         add_bubble_in_execute();
+        //PC.valid=true;
     }
 }
 for(int i=0;i<=31;i++){
