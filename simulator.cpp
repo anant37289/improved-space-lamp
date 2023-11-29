@@ -3,211 +3,114 @@ using namespace std;
 ofstream globalOutputStream;
 enum type{read,write};
 class block{
-    public:
-    int block_elements[16];
+public:
+int data[4];
 };
-class req{
-    public:
-    int addr;
-    type t;
-    int tag(){
-        return addr>>12;
-    }
-    int index(){
-        return addr>>6 & 0x3F;//0x3F==0b11 1111
-    }
-    int offset(){
-        return addr>>2 & 0xF;//i have made the memory word addressible so the addr should be right shifted by 2
-    }
-};
-class cpureq:public req{
-    public:
-    int data;
-};
-class memreq:public req{
-    public:
-    block data;
-    int tag(){
-        return addr>>6;
-    }
-};
-class resp{
-    public:
-    int addr;
-    type t;
-    int tag(){
-        return addr>>12;
-    }
-    int index(){
-        return addr>>6 & 0x3F;
-    }
-    int offset(){
-        return addr>>2& 0xF;
-    }
-};
-class cpuresp:public resp{
-    public:
-    int data;
-};
-class memresp:public resp{
-    public:
-    block data;
-    int tag(){
-        return addr>>6;
-    }
-};
-
 class MM{
-    public:
-    block mm[4096];//actual size with int address should be 2^28(no need for that much space in simulator)
-    memresp service(memreq MEMreq){
-        this_thread::sleep_for(std::chrono::seconds(1));
-        memresp MEMresp;
-        if(MEMreq.t==read){
-            MEMresp.addr=MEMreq.addr;
-            MEMresp.data=mm[MEMreq.tag()];
-            MEMresp.t=read;//against a read or a write
-            return MEMresp;
-        }
-        if(MEMreq.t==write){
-            mm[MEMreq.tag()]=MEMreq.data;
-        } 
-    }
+public:
+block arr[1<<26];
+block readService(int address){
+    return arr[address>>6];
+};
+void writeService(int address,block b){
+    arr[address>>6]=b;
+};
 }mem;
 enum state{I,V,MP,M};
-class info_block{
-    //stoes the block info in a (S,T,B)
-    public:
-    block blck;
-    int tag;//tag
-    state s;
-    int time_use;
-};
-class SET{
-    public:
-    info_block blocks[4];//way=4
-  
-};
-int evict(SET s){
-int index_to_evict=0;
-int min_time=s.blocks[0].time_use;
-for(int i=1;i<4;i++){
-if(min_time>s.blocks[i].time_use){
-    index_to_evict=i;
-    min_time=s.blocks[i].time_use;
-}
-}
-return index_to_evict;
-}
-memresp MDR;
-class miss_status_holding_register{
-    public:
-    queue<cpureq> MSHRq;
-    //this should do the memreq?
-    void add_req(cpureq CPUreq){
-        MSHRq.push(CPUreq);
-        memreq MEMreq;
-        MEMreq.addr=CPUreq.addr;
-        MEMreq.t=read;
-        MDR=mem.service(MEMreq);
+class cache_{
+public:
+/*
+4-way set associative cache 16 KB
+*/
+block data_arr[64][4];
+int tag_arr[64][4];
+state state_arr[64][4];
+int accessTime[64][4];
+int readService(int address){
+    auto currentTimePoint=chrono::system_clock::now();
+    auto currentTime = chrono::time_point_cast<chrono::seconds>(currentTimePoint);
+    auto clock_time = currentTime.time_since_epoch().count();
+    int index=address>>6 & 0x3F;
+    int tag=address>>12;
+    int offset=address & 0x3F;
+    //for this set
+    for(int i=0;i<4;i++){
+        if(tag_arr[index][i]==tag && (state_arr[index][i]==V||state_arr[index][i]==M)){
+            // read_hit+=1;
+            accessTime[index][64]=clock_time;
+            return data_arr[index][i].data[offset>>4];//return the integer indexed values
+        }
+        if(tag_arr[index][i]==tag && state_arr[index][i]==MP){
+            //pass
+        }
     }
-    cpureq serviced_req(){
-        cpureq request_being_serviced=MSHRq.front();
-        MSHRq.pop();
-        return request_being_serviced;
-    }
-}MSHR;
-class WRITE_BUFFER{
-    public:
-    queue<pair<block,int>> b;
-    void add_writeback(pair<block,int> req){
-        b.push(req);
-        memreq MEMreq;
-        MEMreq.addr=req.second;
-        MEMreq.t=write;
-        MEMreq.data=req.first;
-        mem.service(MEMreq);
-        b.pop();
-    }
-}write_buffer;
-class CACHE{
-    public:
-    miss_status_holding_register MSHR;
-    int way=4;
-    SET cache[64];
-    
-    cpuresp service(cpureq CPUreq){
-        auto currentTimePoint=chrono::system_clock::now();
-        auto currentTime = std::chrono::time_point_cast<chrono::seconds>(currentTimePoint);
-        auto seconds = currentTime.time_since_epoch().count();
-        SET s=cache[CPUreq.index()];
-        cpuresp CPUresp;
-        CPUresp.addr=CPUreq.addr;
-        for(int i=0;i<way;i++){
-            info_block b=s.blocks[i];
-            if(b.tag==CPUreq.tag() && (b.s==V||b.s==M)){
-                if(CPUreq.t==read){
-                    globalOutputStream<<CPUreq.addr<<" "<<"read"<<" "<<"Hit"<<endl;
-                    CPUresp.data=b.blck.block_elements[CPUreq.offset()];
-                    b.time_use=seconds;//for LRU replacement
-                    return CPUresp;
-                }
-                if(CPUreq.t==write){
-                    globalOutputStream<<CPUreq.addr<<" "<<"write"<<" "<<"Hit"<<endl;
-                    b.s=M;
-                    b.blck.block_elements[CPUreq.offset()]=CPUreq.data;
-                    b.time_use=seconds;//for LRU replacement
-                    cache[CPUreq.index()].blocks[i]=b;
-                    return CPUresp;
-                }
-            }
-            if(b.tag==CPUreq.tag() && b.s==MP){
-                //pass
+        //if no tag match then eviction
+        // read_miss+=1;
+        int max_access_time=accessTime[index][0];
+        int evict=0;
+        for(int i=1;i<4;i++){
+            if(accessTime[index][i]>max_access_time){
+                evict=i;
+                max_access_time=accessTime[index][i];
             }
         }
-        if(CPUreq.t==read){
-            globalOutputStream<<"### "<<CPUreq.addr<<" "<<"read"<<" "<<"Miss ###"<<endl;
+        if(state_arr[index][evict]==M){
+            mem.writeService(((tag_arr[index][evict] & 0xFFFFF)<<12)+(index<<6),data_arr[index][evict]);
         }
-        if(CPUreq.t==write){
-            globalOutputStream<<"### "<<CPUreq.addr<<" "<<"write"<<" "<<"Miss ###"<<endl;
-        }   
-
-        int eviction_index=evict(s);
-        if(s.blocks[eviction_index].s==M){
-            globalOutputStream<<"for req "<<CPUreq.addr<<" "<<"block_evicted addr: "<<(s.blocks[eviction_index].tag<<6+CPUreq.index())<<endl;
-            /*
-            add the evicted block to writeback buffer
-            addr=s.block[eviction_index]<<6(tag left shifted)+index
-            */
-            write_buffer.add_writeback(make_pair(s.blocks[eviction_index].blck,s.blocks[eviction_index].tag<<6+CPUreq.index()));
-        }
-        s.blocks[eviction_index].s=MP;
-        s.blocks[eviction_index].tag=CPUreq.tag();
-        //add the block and the address to write buffer at eviction
-        
+        currentTimePoint=chrono::system_clock::now();
+        currentTime = chrono::time_point_cast<chrono::seconds>(currentTimePoint);
+        clock_time = currentTime.time_since_epoch().count();
+        state_arr[index][evict]=MP;
+        tag_arr[index][evict]=tag;
+        data_arr[index][evict]=mem.readService(address);
+        state_arr[index][evict]=V;
+        accessTime[index][evict]=clock_time;
+        return data_arr[index][evict].data[offset>>4];
     
-        //send the memory request here-->to miss status holding register
-        MSHR.add_req(CPUreq);
-        //when MDR gets filled fill the cache and also give CPUresp
-        cpureq cpu_request_being_services=MSHR.serviced_req();
-        if(cpu_request_being_services.t==read){
-            s.blocks[eviction_index].s=V;
-            s.blocks[eviction_index].blck=MDR.data;
-            s.blocks[eviction_index].time_use=seconds;//for LRU replacement
-            cache[cpu_request_being_services.index()]=s;
-            CPUresp.t=cpu_request_being_services.t;
-            CPUreq.data=MDR.data.block_elements[cpu_request_being_services.offset()];
-            return CPUresp;
+}
+void writeService(int address,int data){
+    auto currentTimePoint=chrono::system_clock::now();
+    auto currentTime = chrono::time_point_cast<chrono::seconds>(currentTimePoint);
+    auto clock_time = currentTime.time_since_epoch().count();
+    int index=address>>6 & 0x3F;
+    int tag=address>>12;
+    int offset=address & 0x3F;
+    //for this set
+    for(int i=0;i<4;i++){
+        if(tag_arr[index][i]==tag && (state_arr[index][i]==V||state_arr[index][i]==M)){
+            // write_hit+=1;
+            accessTime[index][64]=clock_time;
+            state_arr[index][i]=M;
+            data_arr[index][i].data[offset>>4]=data;//return the integer indexed values
+            return;
         }
-        if(cpu_request_being_services.t==write){
-            s.blocks[eviction_index].s=M;
-            s.blocks[eviction_index].blck=MDR.data;
-            s.blocks[eviction_index].time_use=seconds;//for LRU replacement
-            s.blocks[eviction_index].blck.block_elements[CPUreq.offset()]=CPUreq.data;
-            cache[cpu_request_being_services.index()]=s;
+        if(tag_arr[index][i]==tag && state_arr[index][i]==MP){
+            //pass
         }
-        
-    }
+        }
+        //if no tag match then eviction
+        // write_miss+=1;
+        int max_access_time=accessTime[index][0];
+        int evict=0;
+        for(int i=1;i<4;i++){
+            if(accessTime[index][i]>max_access_time){
+                evict=i;
+                max_access_time=accessTime[index][i];
+            }
+        }
+        if(state_arr[index][evict]==M){
+            mem.writeService(((tag_arr[index][evict])<<12)+(index<<6),data_arr[index][evict]);
+        }
+        currentTimePoint=chrono::system_clock::now();
+        currentTime = chrono::time_point_cast<chrono::seconds>(currentTimePoint);
+        clock_time = currentTime.time_since_epoch().count();
+        state_arr[index][evict]=MP;
+        tag_arr[index][evict]=tag;
+        data_arr[index][evict]=mem.readService(address);
+        data_arr[index][evict].data[offset>>4]=data;
+        state_arr[index][evict]=M;
+        accessTime[index][evict]=clock_time;
+}
 }cache;
 //ALU select of 2 bits for ease
 //design decision to get rid of ALU op and give opcode to ALUcontrol
@@ -359,7 +262,7 @@ struct EXMO_register_set{
     int rdl;
     bool valid;
     bool stall;
-    bool is_branch_taken;
+    bool branch_taken;
 }exmo;
 
 struct MOWB_register_set{
@@ -373,8 +276,8 @@ struct MOWB_register_set{
     bool stall;
 }mowb;
 // global NPC
+int BPC;
 int NPC;
-int TPC;
 string s(31,'0');
 bool Forwarder::cant_resolve(int rs){
 //see the dependency in decode stage(the same detection system may work)  
@@ -576,38 +479,29 @@ void execute(){
     bool gt_flag=(rs1>rs2);
    
 
-    int BPC= PC_execute+immf*4;
+    BPC= PC_execute+immf*4;
     // int TPC;
+    exmo.branch_taken=false;
     if(cw.cw_map["branch"]){
         switch (stir(func3)){
             case 0://beq
-            if(zero_flag){TPC=BPC;
-            exmo.is_branch_taken=true;
-            }
-            else{TPC=NPC;
-            exmo.is_branch_taken=false;
+            if(zero_flag){
+            exmo.branch_taken=true;
             }
             break;
             case 5:
-            if(zero_flag||gt_flag){TPC=BPC;
-            exmo.is_branch_taken=true;
-            }
-            else{TPC=NPC;
-            exmo.is_branch_taken=false;
+            if(zero_flag||gt_flag){
+            exmo.branch_taken=true;
             }
             break;
             case 7:
-            if(lt_flag){TPC=BPC;
-            exmo.is_branch_taken=true;
-            }
-            else{TPC=NPC;
-            exmo.is_branch_taken=false;
+            if(lt_flag){
+            exmo.branch_taken=true;
             }
             break;
         }
     }else{
-        TPC=NPC;
-        exmo.is_branch_taken=false;
+        exmo.branch_taken=false;
     }
     //PC.pc=TPC;//here the hazard logic and flushing the pipeline will come
 exmo.DPC=idex.DPC;
@@ -630,26 +524,10 @@ void memory(){
     int ldresult;
     if(instruction!=s){
     if(cw.cw_map["memread"]){
-        auto start = chrono::high_resolution_clock::now();   
-        cpureq reqLoad;
-        reqLoad.addr=ALU_result;
-        reqLoad.t=read;
-        cpuresp respload=cache.service(reqLoad);
-        auto stop = chrono::high_resolution_clock::now();
-        ldresult=respload.data;
-        auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
-        globalOutputStream<< duration.count() << endl;
+        ldresult=cache.readService(ALU_result);
     }
     if(cw.cw_map["memwrite"]){
-       auto start = chrono::high_resolution_clock::now();   
-        cpureq reqstore;
-        reqstore.data=rs2;
-        reqstore.addr=ALU_result;
-        reqstore.t=write;
-        cpuresp respstrore=cache.service(reqstore);
-        auto stop = chrono::high_resolution_clock::now();
-        auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
-        globalOutputStream<< duration.count() << endl;
+        cache.writeService(ALU_result,rs2);
     }
     }
 
@@ -709,17 +587,19 @@ make_IM_GPR_INS();
 PC.valid=true;
 PC.pc=0;
 int CC=0;
+double IPC=0;
 while(PC.valid||ifid.valid||idex.valid||exmo.valid||mowb.valid){
     
     /*
     code to print timing diagram at the beginning of every cycle
     */
+    
     int PC_val[5]={0};
-    if(PC.valid){PC_val[0]=PC.pc;}else{PC_val[0]=-2;}
-    if(ifid.valid){PC_val[1]=ifid.DPC;}else{PC_val[1]=-2;}
-    if(idex.valid){PC_val[2]=idex.DPC;}else{PC_val[2]=-2;}
-    if(exmo.valid){PC_val[3]=exmo.DPC;}else{PC_val[3]=-2;}
-    if(mowb.valid){PC_val[4]=mowb.DPC;}else{PC_val[4]=-2;}
+    if(PC.valid){PC_val[0]=PC.pc;if(PC.pc!=-1){IPC+=0.2;}}else{PC_val[0]=-2;}
+    if(ifid.valid){PC_val[1]=ifid.DPC;if(ifid.DPC!=-1){IPC+=0.2;}}else{PC_val[1]=-2;}
+    if(idex.valid){PC_val[2]=idex.DPC;if(idex.DPC!=-1){IPC+=0.2;}}else{PC_val[2]=-2;}
+    if(exmo.valid){PC_val[3]=exmo.DPC;if(exmo.DPC!=-1){IPC+=0.2;}}else{PC_val[3]=-2;}
+    if(mowb.valid){PC_val[4]=mowb.DPC;if(mowb.DPC!=-1){IPC+=0.2;}}else{PC_val[4]=-2;}
     CC+=1;
     if (CC == 1) {
     cout << left << setw(6) << "cycle"<<setw(8) << "fetch"<<setw(8) << "decode"<<setw(8) << "execute"<<setw(8) << "memory"<< "writeback" << endl;
@@ -728,7 +608,10 @@ while(PC.valid||ifid.valid||idex.valid||exmo.valid||mowb.valid){
     /*
     END
     */
-    NPC=PC.pc+4;
+   if(PC.valid){
+     NPC=PC.pc+4;
+   }
+   
     forwarder.resolve();
     wb();
     memory();
@@ -736,24 +619,15 @@ while(PC.valid||ifid.valid||idex.valid||exmo.valid||mowb.valid){
     decode();
     fetch();
     if(!ifid.stall){//if ifid stalls dont change the pc
-    if(CC<3){
-            PC.pc=NPC;
+    if(exmo.cw.cw_map["branch"] && exmo.branch_taken){
+            PC.pc=  BPC;
         }
         else{
-            PC.pc=TPC;
-            /*
-            if a branch is setting this and the branch is taken you should fetch the next instruction 
-            because it is going to be some valid instruction else make the PC.valid remain false if it is
-            the terminating set of instructions
-            */
-           if(exmo.cw.cw_map["branch"] && exmo.is_branch_taken){
-            PC.valid=true;
-           }
-            
+            PC.pc=NPC;   
         }
     }
     //if branch taken --> flush 
-    if(exmo.cw.cw_map["branch"] && exmo.is_branch_taken){
+    if(exmo.cw.cw_map["branch"] && exmo.branch_taken){
         //ifid.flush and idex.flush
         if(idex.rdl!=0){
             ins[idex.rdl]=Prev_val_of_ins_rdl;
@@ -761,11 +635,13 @@ while(PC.valid||ifid.valid||idex.valid||exmo.valid||mowb.valid){
         
         add_bubble_in_decode();
         add_bubble_in_execute();
-        //PC.valid=true;
+        PC.valid=true;
     }
 }
 for(int i=0;i<=31;i++){
     cout<<"GPR["<<i<<"]: "<<GPR[i]<<endl;
 }
+IPC/=CC;
+cout<<"IPC:"<<" "<<IPC<<endl;
 }
 
